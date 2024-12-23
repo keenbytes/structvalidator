@@ -1,6 +1,6 @@
 # struct-validator
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/go-phings/struct-validator.svg)](https://pkg.go.dev/github.com/go-phings/struct-validator) [![Go Report Card](https://goreportcard.com/badge/github.com/go-phings/struct-validator)](https://goreportcard.com/report/github.com/go-phings/struct-validator) ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/go-phings/struct-validator?sort=semver)
+[![Go Reference](https://pkg.go.dev/badge/github.com/go-phings/struct-validator.svg)](https://pkg.go.dev/github.com/go-phings/struct-validator) [![Go Report Card](https://goreportcard.com/badge/github.com/go-phings/struct-validator)](https://goreportcard.com/report/github.com/go-phings/struct-validator)
 
 Verify the values of struct fields using tags
 
