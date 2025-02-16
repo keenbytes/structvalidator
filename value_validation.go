@@ -17,7 +17,7 @@ type ValueValidation struct {
 
 // values used with flags
 const (
-	_ = iota
+	_            = iota
 	ValMinNotNil = 1 << iota
 	ValMaxNotNil
 	Required

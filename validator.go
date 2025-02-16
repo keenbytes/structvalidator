@@ -9,15 +9,15 @@ import (
 
 // values for invalid field flags
 const (
-	_ = iota
+	_          = iota
 	FailLenMin = 1 << iota
-  FailLenMax
-  FailValMin
-  FailValMax
-  FailEmpty
-  FailRegexp
-  FailEmail
-  FailZero
+	FailLenMax
+	FailValMin
+	FailValMax
+	FailEmpty
+	FailRegexp
+	FailEmail
+	FailZero
 )
 
 // Optional configuration for validation:
@@ -175,7 +175,7 @@ func getFieldTagValues(field *reflect.StructField, tagName string, overwriteFiel
 		if ok2 {
 			tagVal = overwriteTagVal
 		}
-		overwriteTagVal, ok2 = overwriteTags[tagName + "_regexp"]
+		overwriteTagVal, ok2 = overwriteTags[tagName+"_regexp"]
 		if ok2 {
 			tagRegexpVal = overwriteTagVal
 		}
