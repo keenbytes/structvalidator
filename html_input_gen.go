@@ -65,7 +65,7 @@ func GenerateHTML(obj interface{}, options *HTMLOptions) map[string]string {
 		}
 
 		// generate only ints, string and bool
-		if !isInt(fieldKind) && !isString(fieldKind) && !isBool(fieldKind) {
+		if !isInt(fieldKind) && fieldKind != reflect.String && fieldKind != reflect.Bool {
 			continue
 		}
 
@@ -73,10 +73,10 @@ func GenerateHTML(obj interface{}, options *HTMLOptions) map[string]string {
 		value := ""
 
 		if options != nil && options.FieldValues {
-			if isBool(fieldKind) && elem.Field(j).Bool() {
+			if fieldKind == reflect.Bool && elem.Field(j).Bool() {
 				value = "true"
 			}
-			if isString(fieldKind) {
+			if fieldKind == reflect.String {
 				value = elem.Field(j).String()
 			}
 			if isInt(fieldKind) {
@@ -95,7 +95,7 @@ func GenerateHTML(obj interface{}, options *HTMLOptions) map[string]string {
 		}
 		fieldNameAttr := fmt.Sprintf(` name="%s%s"`, options.NamePrefix, field.Name)
 
-		if isBool(fieldKind) {
+		if fieldKind == reflect.Bool {
 			fieldChecked := ""
 			if value == "true" {
 				fieldChecked = " checked"
@@ -142,7 +142,7 @@ func GenerateHTML(obj interface{}, options *HTMLOptions) map[string]string {
 			continue
 		}
 
-		if isString(fieldKind) {
+		if fieldKind == reflect.String {
 			if inputType == TypeTextarea {
 				fields[field.Name] = fmt.Sprintf(`<textarea%s%s%s%s>%s</textarea>`, fieldNameAttr, fieldIDAttr, validationAttrs, patternAttr, html.EscapeString(value))
 				continue
