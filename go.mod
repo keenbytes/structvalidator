@@ -1,3 +1,3 @@
-module github.com/go-phings/struct-validator
+module gopkg.pl/phings/struct-validator
 
-go 1.23.4
+go 1.22.1

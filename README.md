@@ -1,12 +1,16 @@
 # struct-validator
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/go-phings/struct-validator.svg)](https://pkg.go.dev/github.com/go-phings/struct-validator) [![Go Report Card](https://goreportcard.com/badge/github.com/go-phings/struct-validator)](https://goreportcard.com/report/github.com/go-phings/struct-validator)
+[![Go Reference](https://pkg.go.dev/badge/gopkg.pl/phings/struct-validator.svg)](https://pkg.go.dev/gopkg.pl/phings/struct-validator) [![Go Report Card](https://goreportcard.com/badge/gopkg.pl/phings/struct-validator)](https://goreportcard.com/report/gopkg.pl/phings/struct-validator)
 
 Verify the values of struct fields using tags
 
 ### Example code
 
 ```
+package main
+
+import "gopkg.pl/phings/struct-validator"
+
 type Test1 struct {
 	FirstName     string `validation:"req lenmin:5 lenmax:25"`
 	LastName      string `validation:"req lenmin:2 lenmax:50"`
