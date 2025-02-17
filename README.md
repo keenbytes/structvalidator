@@ -6,11 +6,13 @@ Verify the values of struct fields using tags
 
 ### Example code
 
+Use the package with the following URL:
 ```
-package main
-
 import "gopkg.pl/phings/struct-validator"
+```
 
+And see below code snippet:
+```
 type Test1 struct {
 	FirstName     string `validation:"req lenmin:5 lenmax:25"`
 	LastName      string `validation:"req lenmin:2 lenmax:50"`
