@@ -3,7 +3,6 @@ package structvalidator
 import (
 	"reflect"
 	"regexp"
-	"strings"
 )
 
 type ValueValidation struct {
@@ -38,7 +37,7 @@ func (v *ValueValidation) ValidateReflectValue(value reflect.Value) (ok bool, fa
 		if value.Type().Name() == "string" && value.String() == "" {
 			return false, FailEmpty
 		}
-		if strings.HasPrefix(value.Type().Name(), "int") && value.Int() == 0 && !minCanBeZero && !maxCanBeZero && v.ValMin == 0 && v.ValMax == 0 {
+		if isInt(value.Kind()) && value.Int() == 0 && !minCanBeZero && !maxCanBeZero && v.ValMin == 0 && v.ValMax == 0 {
 			return false, FailZero
 		}
 	}
@@ -65,7 +64,7 @@ func (v *ValueValidation) ValidateReflectValue(value reflect.Value) (ok bool, fa
 		}
 	}
 
-	if strings.HasPrefix(value.Type().Name(), "int") {
+	if isInt(value.Kind()) {
 		if (v.ValMin != 0 || minCanBeZero) && v.ValMin > value.Int() {
 			return false, FailValMin
 		}
