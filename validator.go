@@ -7,30 +7,18 @@ import (
 	"strings"
 )
 
-type FieldValidation struct {
-	lenMin int
-	lenMax int
-	valMin int64
-	valMax int64
-	regexp *regexp.Regexp
-	flags  int64
-}
-
-// values used with flags
-const ValMinNotNil = 2
-const ValMaxNotNil = 4
-const Required = 8
-const Email = 16
-
 // values for invalid field flags
-const FailLenMin = 2
-const FailLenMax = 4
-const FailValMin = 8
-const FailValMax = 16
-const FailEmpty = 32
-const FailRegexp = 64
-const FailEmail = 128
-const FailZero = 256
+const (
+	_          = iota
+	FailLenMin = 1 << iota
+	FailLenMax
+	FailValMin
+	FailValMax
+	FailEmpty
+	FailRegexp
+	FailEmail
+	FailZero
+)
 
 // Optional configuration for validation:
 // * RestrictFields defines what struct fields should be validated
@@ -50,6 +38,11 @@ type ValidationOptions struct {
 // Func returns boolean value that determines whether value is true or false, and a map of fields that failed
 // validation.  See Fail* constants for the values.
 func Validate(obj interface{}, options *ValidationOptions) (bool, map[string]int) {
+	// ValidationOptions is required
+	if options == nil {
+		panic("ValidationOptions cannot be nil")
+	}
+
 	v := reflect.ValueOf(obj)
 	i := reflect.Indirect(v)
 	s := i.Type()
@@ -61,11 +54,11 @@ func Validate(obj interface{}, options *ValidationOptions) (bool, map[string]int
 	}
 
 	tagName := "validation"
-	if options != nil && options.OverwriteTagName != "" {
+	if options.OverwriteTagName != "" {
 		tagName = options.OverwriteTagName
 	}
 
-	invalidFields := map[string]int{}
+	invalidFields := make(map[string]int, s.NumField())
 	valid := true
 
 	for j := 0; j < s.NumField(); j++ {
@@ -73,57 +66,34 @@ func Validate(obj interface{}, options *ValidationOptions) (bool, map[string]int
 		fieldKind := field.Type.Kind()
 
 		// check if only specified field should be checked
-		if options != nil && len(options.RestrictFields) > 0 && !options.RestrictFields[field.Name] {
+		if len(options.RestrictFields) > 0 && !options.RestrictFields[field.Name] {
 			continue
 		}
 
 		// validate only ints and string
-		if !isInt(fieldKind) && !isString(fieldKind) {
+		if !isInt(fieldKind) && fieldKind != reflect.String {
 			continue
 		}
 
-		validation := FieldValidation{}
-		validation.lenMin = -1
-		validation.lenMax = -1
+		validation := NewValueValidation()
 
-		// get tag values
-		tagVal := field.Tag.Get(tagName)
-		tagRegexpVal := field.Tag.Get(tagName + "_regexp")
-		if options != nil && len(options.OverwriteFieldTags) > 0 {
-			if len(options.OverwriteFieldTags[field.Name]) > 0 {
-				if options.OverwriteFieldTags[field.Name][tagName] != "" {
-					tagVal = options.OverwriteFieldTags[field.Name][tagName]
-				}
-				if options.OverwriteFieldTags[field.Name][tagName+"_regexp"] != "" {
-					tagRegexpVal = options.OverwriteFieldTags[field.Name][tagName+"_regexp"]
-				}
-			}
+		tagVal, tagRegexpVal := getFieldTagValues(&field, tagName, options.OverwriteFieldTags)
+		setValidationFromTags(validation, tagVal, tagRegexpVal)
+		if options.ValidateWhenSuffix {
+			setValidationFromSuffix(validation, &field)
 		}
 
-		setValidationFromTag(&validation, tagVal)
-		if tagRegexpVal != "" {
-			validation.regexp = regexp.MustCompile(tagRegexpVal)
-		}
-
-		if options != nil && options.ValidateWhenSuffix {
-			if strings.HasSuffix(field.Name, "Email") {
-				validation.flags = validation.flags | Email
-			}
-			if strings.HasSuffix(field.Name, "Price") && validation.valMin == 0 && validation.valMax == 0 && validation.flags&ValMinNotNil == 0 && validation.flags&ValMaxNotNil == 0 {
-				validation.valMin = 0
-				validation.flags = validation.flags | ValMinNotNil
-			}
-		}
-
+		// field value can be overwritten in ValidationOptions
 		var fieldValue reflect.Value
-		if options != nil && len(options.OverwriteFieldValues) > 0 && isKeyInMap(field.Name, options.OverwriteFieldValues) {
-			fieldValue = reflect.ValueOf(options.OverwriteFieldValues[field.Name])
+		overwriteVal, ok := options.OverwriteFieldValues[field.Name]
+		if ok {
+			fieldValue = reflect.ValueOf(overwriteVal)
 		} else {
 			fieldValue = v.Elem().FieldByName(field.Name)
 		}
 
-		fieldValid, failureFlags := validateValue(fieldValue, &validation)
-		if !fieldValid {
+		ok, failureFlags := validation.ValidateReflectValue(fieldValue)
+		if !ok {
 			valid = false
 			invalidFields[field.Name] = failureFlags
 		}
@@ -132,73 +102,20 @@ func Validate(obj interface{}, options *ValidationOptions) (bool, map[string]int
 	return valid, invalidFields
 }
 
-func validateValue(value reflect.Value, validation *FieldValidation) (bool, int) {
-	minCanBeZero := false
-	maxCanBeZero := false
-	if validation.flags&ValMinNotNil > 0 {
-		minCanBeZero = true
-	}
-	if validation.flags&ValMaxNotNil > 0 {
-		maxCanBeZero = true
-	}
-
-	if validation.flags&Required > 0 {
-		if value.Type().Name() == "string" && value.String() == "" {
-			return false, FailEmpty
-		}
-		if strings.HasPrefix(value.Type().Name(), "int") && value.Int() == 0 && !minCanBeZero && !maxCanBeZero && validation.valMin == 0 && validation.valMax == 0 {
-			return false, FailZero
-		}
-	}
-
-	if value.Type().Name() == "string" {
-		if validation.lenMin > 0 && len(value.String()) < validation.lenMin {
-			return false, FailLenMin
-		}
-		if validation.lenMax > 0 && len(value.String()) > validation.lenMax {
-			return false, FailLenMax
-		}
-
-		if validation.regexp != nil {
-			if !validation.regexp.MatchString(value.String()) {
-				return false, FailRegexp
-			}
-		}
-
-		if validation.flags&Email > 0 {
-			var emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
-			if !emailRegex.MatchString(value.String()) {
-				return false, FailEmail
-			}
-		}
-	}
-
-	if strings.HasPrefix(value.Type().Name(), "int") {
-		if (validation.valMin != 0 || minCanBeZero) && validation.valMin > value.Int() {
-			return false, FailValMin
-		}
-		if (validation.valMax != 0 || maxCanBeZero) && validation.valMax < value.Int() {
-			return false, FailValMax
-		}
-	}
-
-	return true, 0
-}
-
-func setValidationFromTag(v *FieldValidation, tag string) {
+func setValidationFromTags(v *ValueValidation, tag string, tagRegexp string) {
 	opts := strings.SplitN(tag, " ", -1)
 	for _, opt := range opts {
 		if opt == "req" {
-			v.flags = v.flags | Required
+			v.Flags = v.Flags | Required
 		}
 		if opt == "email" {
-			v.flags = v.flags | Email
+			v.Flags = v.Flags | Email
 		}
 		for _, valOpt := range []string{"lenmin", "lenmax", "valmin", "valmax", "regexp"} {
 			if strings.HasPrefix(opt, valOpt+":") {
 				val := strings.Replace(opt, valOpt+":", "", 1)
 				if valOpt == "regexp" {
-					v.regexp = regexp.MustCompile(val)
+					v.Regexp = regexp.MustCompile(val)
 					continue
 				}
 
@@ -208,22 +125,36 @@ func setValidationFromTag(v *FieldValidation, tag string) {
 				}
 				switch valOpt {
 				case "lenmin":
-					v.lenMin = i
+					v.LenMin = i
 				case "lenmax":
-					v.lenMax = i
+					v.LenMax = i
 				case "valmin":
-					v.valMin = int64(i)
+					v.ValMin = int64(i)
 					if i == 0 {
-						v.flags = v.flags | ValMinNotNil
+						v.Flags = v.Flags | ValMinNotNil
 					}
 				case "valmax":
-					v.valMax = int64(i)
+					v.ValMax = int64(i)
 					if i == 0 {
-						v.flags = v.flags | ValMaxNotNil
+						v.Flags = v.Flags | ValMaxNotNil
 					}
 				}
 			}
 		}
+	}
+
+	if tagRegexp != "" {
+		v.Regexp = regexp.MustCompile(tagRegexp)
+	}
+}
+
+func setValidationFromSuffix(v *ValueValidation, field *reflect.StructField) {
+	if strings.HasSuffix(field.Name, "Email") {
+		v.Flags = v.Flags | Email
+	}
+	if strings.HasSuffix(field.Name, "Price") && v.ValMin == 0 && v.ValMax == 0 && v.Flags&ValMinNotNil == 0 && v.Flags&ValMaxNotNil == 0 {
+		v.ValMin = 0
+		v.Flags = v.Flags | ValMinNotNil
 	}
 }
 
@@ -234,25 +165,20 @@ func isInt(k reflect.Kind) bool {
 	return false
 }
 
-func isString(k reflect.Kind) bool {
-	if k == reflect.String {
-		return true
-	}
-	return false
-}
+func getFieldTagValues(field *reflect.StructField, tagName string, overwriteFieldTags map[string]map[string]string) (tagVal string, tagRegexpVal string) {
+	tagVal = field.Tag.Get(tagName)
+	tagRegexpVal = field.Tag.Get(tagName + "_regexp")
 
-func isBool(k reflect.Kind) bool {
-	if k == reflect.Bool {
-		return true
-	}
-	return false
-}
-
-func isKeyInMap(k string, m map[string]interface{}) bool {
-	for _, key := range reflect.ValueOf(m).MapKeys() {
-		if key.String() == k {
-			return true
+	overwriteTags, ok := overwriteFieldTags[field.Name]
+	if ok {
+		overwriteTagVal, ok2 := overwriteTags[tagName]
+		if ok2 {
+			tagVal = overwriteTagVal
+		}
+		overwriteTagVal, ok2 = overwriteTags[tagName+"_regexp"]
+		if ok2 {
+			tagRegexpVal = overwriteTagVal
 		}
 	}
-	return false
+	return
 }
