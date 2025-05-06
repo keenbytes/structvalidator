@@ -1,6 +1,6 @@
-# struct-validator
+# structvalidator
 
-[![Go Reference](https://pkg.go.dev/badge/gopkg.pl/phings/struct-validator.svg)](https://pkg.go.dev/gopkg.pl/phings/struct-validator) [![Go Report Card](https://goreportcard.com/badge/gopkg.pl/phings/struct-validator)](https://goreportcard.com/report/gopkg.pl/phings/struct-validator)
+[![Go Reference](https://pkg.go.dev/badge/gopkg.pl/mikogs/structvalidator.svg)](https://pkg.go.dev/gopkg.pl/mikogs/structvalidator) [![Go Report Card](https://goreportcard.com/badge/gopkg.pl/mikogs/structvalidator)](https://goreportcard.com/report/gopkg.pl/mikogs/structvalidator)
 
 Verify the values of struct fields using tags
 
@@ -8,7 +8,7 @@ Verify the values of struct fields using tags
 
 Use the package with the following URL:
 ```
-import "gopkg.pl/phings/struct-validator"
+import "gopkg.pl/mikogs/structvalidator"
 ```
 
 And see below code snippet:
