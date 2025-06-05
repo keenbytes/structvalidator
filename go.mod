@@ -1,3 +1,3 @@
-module gopkg.pl/mikogs/structvalidator
+module github.com/keenbytes/structvalidator
 
 go 1.22.1
